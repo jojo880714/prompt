@@ -1,7 +1,7 @@
 {
   "name": "行銷策略 Prompt 產出工具",
   "short_name": "Prompt 產出",
-  "description": "快速產出行銷策略 AI Prompt，純本地運算，不收集任何資料。",
+  "description": "不知道怎麼跟 AI 說話？6 步驟選好角色、框架、任務，自動產出精準指令語，結果直接升級",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#F5F4F1",
