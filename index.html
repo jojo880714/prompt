@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Prompt 產出">
+<meta name="theme-color" content="#1A1A2E">
+<title>行銷策略 Prompt 產出工具</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<style>
+:root {
+  --brand: #1A1A2E;
+  --brand-light: #2D2D4E;
+  --mode-color: #5C4A9E;
+  --fmt-color: #C47D10;
+  --bg: #F5F4F1;
+  --card: #FFFFFF;
+  --border: rgba(0,0,0,.08);
+  --border-med: rgba(0,0,0,.14);
+  --text-primary: #1A1A1A;
+  --text-secondary: #6B6B6B;
+  --text-tertiary: #B0B0B0;
+  --chip-bg: #FFFFFF;
+  --chip-border: rgba(0,0,0,.14);
+  --chip-text: #444;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+[data-theme="dark"] {
+  --brand: #E8E4FF;
+  --brand-light: #F0ECFF;
+  --bg: #1C1C1E;
+  --card: #2C2C2E;
+  --border: rgba(255,255,255,.08);
+  --border-med: rgba(255,255,255,.14);
+  --text-primary: #F0F0F0;
+  --text-secondary: #A0A0A0;
+  --text-tertiary: #666;
+  --chip-bg: #3A3A3C;
+  --chip-border: rgba(255,255,255,.15);
+  --chip-text: #D0D0D0;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, 'Noto Sans TC', 'PingFang TC', sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* ── 整體佈局 ── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--bg);
+}
+
+/* ── Header ── */
+#header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(var(--safe-top) + 12px) 20px 12px;
+  background: var(--card);
+  border-bottom: 0.5px solid var(--border);
+  flex-shrink: 0;
+}
+
+.header-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--brand);
+  flex-shrink: 0;
+}
+
+.header-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+#theme-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 0.5px solid var(--border-med);
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── 進度條 ── */
+#progress-bar {
+  height: 3px;
+  background: var(--border);
+  flex-shrink: 0;
+  position: relative;
+}
+
+#progress-fill {
+  height: 100%;
+  background: var(--brand);
+  transition: width 0.3s ease;
+  border-radius: 0 2px 2px 0;
+}
+
+/* ── 步驟指示器 ── */
+#step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 20px 0;
+  flex-shrink: 0;
+}
+
+.step-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--border-med);
+  transition: all 0.3s;
+}
+.step-dot.active {
+  background: var(--brand);
+  width: 18px;
+  border-radius: 3px;
+}
+.step-dot.done {
+  background: var(--brand);
+  opacity: 0.4;
+}
+
+/* ── 步驟內容區 ── */
+#steps-wrapper {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── 步驟內容區 ── */
+#steps-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.step-page {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 20px 24px;
+  min-height: 100%;
+}
+
+.step-page.active {
+  display: flex;
+}
+
+/* ── Step Header ── */
+.step-header { margin-bottom: 4px; }
+
+.step-num {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.step-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.step-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* ── 類別標籤 ── */
+.cat-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  display: block;
+}
+.cat-label:first-child { margin-top: 0; }
+
+/* ── Chip 群組 ── */
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── Chip ── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: 100px;
+  border: 0.5px solid var(--chip-border);
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.chip:active { transform: scale(0.95); }
+
+.chip.sel-main {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  font-weight: 600;
+}
+[data-theme="dark"] .chip.sel-main { color: #1A1A2E; }
+
+.chip.sel-mode {
+  background: var(--mode-color);
+  border-color: var(--mode-color);
+  color: #fff;
+  font-weight: 600;
+}
+[data-theme="dark"] .chip.sel-mode {
+  background: #B8A9F0;
+  border-color: #B8A9F0;
+  color: #1A1A2E;
+}
+
+/* ── 思考模式 Chip（可展開說明） ── */
+.mode-chip-wrap {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.mode-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 0.5px solid var(--chip-border);
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  width: 100%;
+}
+.mode-chip:active { transform: scale(0.98); }
+
+.mode-chip-label { font-weight: 500; }
+.mode-chip-arrow {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+.mode-chip.expanded .mode-chip-arrow { transform: rotate(180deg); }
+
+.mode-chip.sel-mode {
+  background: var(--mode-color);
+  border-color: var(--mode-color);
+  color: #fff;
+}
+[data-theme="dark"] .mode-chip.sel-mode {
+  background: #B8A9F0;
+  border-color: #B8A9F0;
+  color: #1A1A2E;
+}
+.mode-chip.sel-mode .mode-chip-arrow { color: rgba(255,255,255,.6); }
+
+.mode-chip-desc {
+  display: none;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  padding: 8px 16px 12px;
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  margin-top: -4px;
+}
+.mode-chip-desc.show { display: block; }
+
+/* ── 任務卡片 ── */
+.task-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.task-card {
+  border-radius: 12px;
+  padding: 14px 14px;
+  border: 0.5px solid var(--border-med);
+  background: var(--card);
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.task-card:active { transform: scale(0.97); }
+.task-card.selected {
+  border: 1.5px solid var(--brand);
+  background: var(--card);
+}
+[data-theme="dark"] .task-card.selected { border-color: #E8E4FF; }
+
+.task-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 5px;
+  line-height: 1.3;
+}
+.task-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── 格式卡片 ── */
+.fmt-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.fmt-card {
+  border-radius: 12px;
+  padding: 12px 6px;
+  border: 0.5px solid var(--border-med);
+  background: var(--card);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.fmt-card:active { transform: scale(0.95); }
+.fmt-card.selected {
+  border: 1.5px solid var(--fmt-color);
+  background: rgba(196,125,16,.06);
+}
+[data-theme="dark"] .fmt-card.selected {
+  border-color: #F5C842;
+  background: rgba(245,200,66,.08);
+}
+
+.fmt-icon {
+  font-size: 20px;
+  display: block;
+  margin-bottom: 6px;
+  line-height: 1;
+}
+.fmt-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.fmt-card.selected .fmt-icon,
+.fmt-card.selected .fmt-name { color: var(--fmt-color); }
+[data-theme="dark"] .fmt-card.selected .fmt-icon,
+[data-theme="dark"] .fmt-card.selected .fmt-name { color: #F5C842; }
+
+/* ── Textarea ── */
+.context-textarea {
+  width: 100%;
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--card);
+  border: 0.5px solid var(--border-med);
+  resize: none;
+  min-height: 140px;
+  outline: none;
+  line-height: 1.7;
+  transition: border-color 0.15s;
+}
+.context-textarea:focus { border-color: var(--brand); }
+.context-textarea::placeholder { color: var(--text-tertiary); }
+
+/* ── 輸出區塊（最後一頁） ── */
+#output-card {
+  background: var(--card);
+  border: 0.5px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+#output-top {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--border);
+  gap: 8px;
+}
+
+#output-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+#quality-indicator {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--brand);
+}
+[data-theme="dark"] #quality-indicator { color: #B8A9F0; }
+
+#output-body {
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.9;
+  color: var(--text-primary);
+  background: var(--bg);
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 120px;
+  max-height: 300px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#output-empty {
+  font-style: italic;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+/* ── Footer 導航 ── */
+#footer {
+  padding: 12px 20px calc(var(--safe-bottom) + 12px);
+  background: var(--card);
+  border-top: 0.5px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 13px 20px;
+  border-radius: 100px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+  flex: 1;
+}
+[data-theme="dark"] .btn-primary { color: #1A1A2E; }
+.btn-primary:hover { opacity: .88; }
+
+.btn-secondary {
+  background: transparent;
+  border: 0.5px solid var(--border-med);
+  color: var(--text-primary);
+  padding: 13px 18px;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  padding: 13px 4px;
+}
+
+#copy-hint {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--brand);
+  opacity: 0;
+  transition: opacity 0.3s;
+  text-align: center;
+  flex: 1;
+}
+#copy-hint.show { opacity: 1; }
+
+/* ── 完整度標籤 ── */
+.quality-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.q-pill {
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg);
+  border: 0.5px solid var(--border-med);
+  color: var(--text-tertiary);
+}
+.q-pill.filled {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+[data-theme="dark"] .q-pill.filled { color: #1A1A2E; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <div id="header">
+    <div class="header-dot"></div>
+    <div class="header-title">行銷策略 Prompt 產出工具</div>
+    <button id="theme-btn" aria-label="切換深淺色">☀</button>
+  </div>
+
+  <div id="progress-bar">
+    <div id="progress-fill"></div>
+  </div>
+
+  <div id="step-indicator"></div>
+
+  <div id="steps-wrapper">
+
+    <!-- Step 1: 你的角色 -->
+    <div class="step-page" id="step-1">
+      <div class="step-header">
+        <div class="step-num">步驟 1 / 6</div>
+        <div class="step-title">你的角色是？</div>
+        <div class="step-hint">選 1 個最符合你的職稱</div>
+      </div>
+      <div id="role-grid"></div>
+    </div>
+
+    <!-- Step 2: 思考模式 -->
+    <div class="step-page" id="step-2">
+      <div class="step-header">
+        <div class="step-num">步驟 2 / 6</div>
+        <div class="step-title">思考模式</div>
+        <div class="step-hint">可多選，點選後展開說明</div>
+      </div>
+      <div id="mode-grid" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
+    <!-- Step 3: AI 專家角色 -->
+    <div class="step-page" id="step-3">
+      <div class="step-header">
+        <div class="step-num">步驟 3 / 6</div>
+        <div class="step-title">AI 要扮演的專家角色</div>
+        <div class="step-hint">選 1 個</div>
+      </div>
+      <div id="expert-grid"></div>
+    </div>
+
+    <!-- Step 4: 任務類型 -->
+    <div class="step-page" id="step-4">
+      <div class="step-header">
+        <div class="step-num">步驟 4 / 6</div>
+        <div class="step-title">你要 AI 做什麼？</div>
+        <div class="step-hint">選 1 個任務方向</div>
+      </div>
+      <div class="task-grid" id="task-grid"></div>
+    </div>
+
+    <!-- Step 5: 格式 + 情境 -->
+    <div class="step-page" id="step-5">
+      <div class="step-header">
+        <div class="step-num">步驟 5 / 6</div>
+        <div class="step-title">產出格式</div>
+        <div class="step-hint">可多選</div>
+      </div>
+      <div class="fmt-grid" id="fmt-grid"></div>
+    </div>
+
+    <!-- Step 6: 情境 + 輸出 -->
+    <div class="step-page" id="step-6">
+      <div class="step-header">
+        <div class="step-num">步驟 6 / 6</div>
+        <div class="step-title">補充你的情境</div>
+        <div class="step-hint">填越詳細，Prompt 越精準</div>
+      </div>
+      <textarea
+        class="context-textarea"
+        id="context-input"
+        placeholder="描述你的產品、目標受眾、面臨的問題，或想達成的具體目標…"
+      ></textarea>
+
+      <div id="output-card">
+        <div id="output-top">
+          <div id="output-label">生成的 Prompt</div>
+          <div id="quality-indicator"></div>
+        </div>
+        <div id="output-body">
+          <span id="output-empty">請完成前面步驟，Prompt 將自動生成。</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /steps-wrapper -->
+
+  <div id="footer">
+    <button class="btn btn-secondary" id="btn-back" style="display:none">← 上一步</button>
+    <button class="btn btn-primary" id="btn-next">下一步 →</button>
+    <span id="copy-hint">已複製！</span>
+    <button class="btn btn-ghost" id="btn-reset" style="display:none">重置</button>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+/* ════════════════════════════════
+   資料
+════════════════════════════════ */
+const ROLES = [
+  { cat:"行銷", items:["行銷企劃","品牌行銷","數位行銷","內容行銷","成長駭客","SEO 專家","廣告投放","廣告代操","KOL / 網紅合作"] },
+  { cat:"社群 / 內容", items:["社群小編","社群經營主管","IG 內容創作者","短影音創作者","部落客","電子報編輯","官網文章撰寫者","Podcast 製作人"] },
+  { cat:"電商 / 銷售", items:["電商營運","產品文案撰寫","銷售文案","業務開發","客戶成功經理","直播主"] },
+  { cat:"策略 / 管理", items:["行銷總監","品牌策略師","營運主管","產品經理","事業開發","新創創辦人","公司負責人"] },
+  { cat:"設計 / 創意", items:["視覺設計師","UX 設計師","創意總監","影片製作人","動畫設計師"] },
+  { cat:"公關 / 傳播", items:["公關專員","媒體編輯","危機公關","企業對外溝通","活動企劃"] },
+  { cat:"研究 / 數據", items:["市場研究員","數據分析師","商業分析師","消費者洞察研究員","競品分析師"] }
+];
+
+const MODES = [
+  { label:"第一性原則", en:"First Principles Thinking", desc:"拆解到最基本的假設，從頭重新推導答案，不被既有做法綁架。" },
+  { label:"MECE 思考", en:"MECE Framework", desc:"相互獨立、完全窮舉。確保分析不重疊、不遺漏。" },
+  { label:"藍海策略", en:"Blue Ocean Strategy", desc:"跳出紅海競爭，開創新市場空間，讓競爭無關緊要。" },
+  { label:"反向思考", en:"Inversion Thinking", desc:"先問「什麼會讓這件事失敗？」，從失敗倒推成功路徑。" },
+  { label:"第二層思考", en:"Second-Order Thinking", desc:"預測決策的連鎖反應，不只看直接結果，也看後續影響。" },
+  { label:"80/20 法則", en:"Pareto Principle", desc:"找出產生 80% 結果的 20% 關鍵行動，集中資源在槓桿點。" },
+  { label:"系統思考", en:"Systems Thinking", desc:"把問題看成相互連結的系統，找到真正的槓桿點。" },
+  { label:"賽局理論", en:"Game Theory", desc:"分析競爭者的決策邏輯，預測對手行為，制定最優策略。" },
+  { label:"設計思考", en:"Design Thinking", desc:"以使用者為中心，透過同理、定義、發想、原型、測試循環迭代。" },
+  { label:"OKR 框架", en:"Objectives & Key Results", desc:"設定具野心的目標，搭配可衡量的關鍵結果追蹤進度。" },
+  { label:"SWOT 分析", en:"SWOT Analysis", desc:"系統盤點優勢、劣勢、機會、威脅，建立清晰策略定位地圖。" },
+  { label:"Jobs-to-be-Done", en:"JTBD Framework", desc:"聚焦使用者真正想達成的任務，揭露真正的購買動機。" },
+  { label:"敏捷思維", en:"Agile Mindset", desc:"小步快跑，快速驗證假設，以持續迭代取代一次到位的大計劃。" },
+  { label:"商業模式畫布", en:"Business Model Canvas", desc:"用 9 個維度全面拆解商業模式，找出關鍵缺口與機會。" },
+  { label:"Porter 五力", en:"Porter's Five Forces", desc:"分析產業競爭結構：供應商、買家、新進者、替代品、競爭對手。" },
+  { label:"損益兩平", en:"Break-even Analysis", desc:"計算達到獲利所需的最低門檻，評估商業模式的基本可行性。" },
+  { label:"北極星指標", en:"North Star Metric", desc:"找出最能代表產品長期成功的單一核心指標，讓團隊聚焦。" },
+  { label:"飛輪效應", en:"Flywheel Effect", desc:"設計自我強化的成長循環，讓每步成果成為下一步動力。" }
+];
+
+const EXPERTS = [
+  { cat:"商業策略", items:[
+    { name:"哈佛商學院 MBA 教授", tag:"以教導高階主管策略性商業思考著稱" },
+    { name:"麥肯錫資深顧問", tag:"專精企業策略診斷與轉型規劃" },
+    { name:"商業模式設計師", tag:"協助新創與既有企業重構商業邏輯" },
+    { name:"創投合夥人", tag:"評估過數百個商業模式，擅長找出致命弱點" },
+    { name:"BCG 顧問", tag:"以數據驅動策略決策著稱" }
+  ]},
+  { cat:"行銷 / 品牌", items:[
+    { name:"頂尖品牌行銷總監", tag:"曾主導多個年營收破億品牌的行銷策略" },
+    { name:"成長駭客專家", tag:"以低成本高效率的手法驅動用戶增長著稱" },
+    { name:"消費者心理學家", tag:"專精購買決策背後的心理機制研究" },
+    { name:"廣告創意總監", tag:"主導過多個獲獎的整合行銷傳播活動" },
+    { name:"SEO / 內容行銷專家", tag:"協助品牌透過內容建立長期有機流量" },
+    { name:"社群行銷策略師", tag:"擅長設計可病毒擴散的社群內容策略" }
+  ]},
+  { cat:"銷售 / 說服", items:[
+    { name:"頂尖業務教練", tag:"訓練過超過千名業務，擅長解構成交心理" },
+    { name:"談判策略專家", tag:"以哈佛談判學派為基礎，專注雙贏談判" },
+    { name:"銷售文案大師", tag:"深諳說服科學，擅長撰寫高轉換率文案" }
+  ]},
+  { cat:"數位 / 科技", items:[
+    { name:"產品策略師", tag:"專注以使用者洞察驅動產品決策" },
+    { name:"數位轉型顧問", tag:"協助傳統企業建立數位化競爭優勢" },
+    { name:"數據分析師", tag:"擅長從數據找出商業洞察與行動方向" },
+    { name:"AI 應用顧問", tag:"協助企業找出 AI 工具的最高價值應用場景" }
+  ]},
+  { cat:"創意 / 傳播", items:[
+    { name:"敘事策略師", tag:"擅長將品牌核心轉化為打動人心的故事" },
+    { name:"整合行銷傳播專家", tag:"協調多個傳播管道，放大品牌訊息一致性" },
+    { name:"危機公關顧問", tag:"協助品牌在輿論風暴中保護與修復形象" }
+  ]}
+];
+
+const TASKS = [
+  { name:"分析我的現況", desc:"找出思考盲點、策略缺口", action:"analyze" },
+  { name:"拆解商業模式", desc:"評估可持續性與獲利空間", action:"business_model" },
+  { name:"找成長策略", desc:"定價、擴張、新產品線策略", action:"growth" },
+  { name:"引導我做決策", desc:"先教框架再套入真實情境", action:"decision" },
+  { name:"評估風險與機會", desc:"全面風險與機會分析", action:"risk" },
+  { name:"挑戰我的思考", desc:"哈佛案例教學式引導", action:"challenge" },
+  { name:"優化現有策略", desc:"找弱點提出強化方向", action:"optimize" },
+  { name:"建構說服架構", desc:"打造高說服力的提案邏輯", action:"persuade" }
+];
+
+const FORMATS = [
+  { icon:"≡", name:"結構化拆解" },
+  { icon:"⊞", name:"表格比較" },
+  { icon:"◎", name:"行動清單" },
+  { icon:"△", name:"框架分析" },
+  { icon:"◷", name:"時程規劃" },
+  { icon:"◈", name:"真實案例" },
+  { icon:"☷", name:"洞察摘要" },
+  { icon:"◐", name:"優缺點評估" }
+];
+
+const TASK_TEMPLATES = {
+  analyze:{
+    frame:(expert,role)=>`請先說明，頂尖的${expert}在面對${role}的挑戰時，與一般思考者有何根本性的差異——他們如何看問題、如何定義問題的邊界，以及如何找到別人看不見的切入點。`,
+    action:(role,ctx)=>`然後，請分析${ctx?'以下這位'+role+'的具體狀況':'一位典型'+role+'的處境'}，找出：\n（1）思考上缺乏清晰度或結構的地方\n（2）被忽略的策略性機會\n（3）需要立即修正的優先事項`
+  },
+  business_model:{
+    frame:()=>`請先說明，一個真正可持續且可規模化的商業模式，應具備哪些核心條件——包含價值主張的獨特性、收入結構的健康程度、成本控制的邏輯，以及護城河的建立方式。`,
+    action:(role,ctx)=>`然後，請將${ctx?'以下描述的商業模式或事業構想':'這位'+role+'的典型商業情境'}拆解成核心組成要素，評估可持續性、可規模化與獲利能力，並提出 3 個具體可行的改善建議。`
+  },
+  growth:{
+    frame:(expert)=>`請先說明，頂尖${expert}在設計成長策略時，會優先評估哪些槓桿點——從定價策略、客戶終身價值、獲客成本效益，到新市場進入時機的判斷邏輯。`,
+    action:(role,ctx)=>`然後，請分析${ctx?'以下描述的':'這位'+role+'面對的'}收入模式，找出定價優化、客戶擴張、新產品線延伸的具體策略，每個方向給出可立即執行的行動。`
+  },
+  decision:{
+    frame:()=>`請先教我如何用結構化思考評估複雜決策，包含如何定義問題、評估風險與機會成本、權衡短長期影響，以及在資訊不完整時做出好決策的方法。`,
+    action:(role,ctx)=>`然後，請用以上框架分析${ctx?'以下這個真實決策情境':'一個'+role+'典型面臨的關鍵決策'}，拆解各選項的利弊，給出具體的決策建議與理由。`
+  },
+  risk:{
+    frame:(expert)=>`請先說明，頂尖的${expert}如何系統性地識別和評估風險——包含隱性風險、二階效應，以及機會成本這個常被忽略的維度。`,
+    action:(role,ctx)=>`然後，請針對${ctx?'以下描述的情境':'這位'+role+'的典型處境'}進行全面評估：主要風險清單（按影響排序）、各風險的緩解策略、被低估的潛在機會，以及長期影響的評估。`
+  },
+  challenge:{
+    frame:(expert)=>`請扮演一位正在主持真實案例討論的${expert}，類似哈佛商學院的案例教學方式。`,
+    action:(role,ctx)=>`請提出一個與${ctx?'以下描述的產業或情境相關':role+'工作直接相關'}的真實商業挑戰，清楚描述背景與關鍵矛盾，提出 2-3 個引導性問題挑戰我思考，並在我回答後給予策略性點評。`
+  },
+  optimize:{
+    frame:()=>`請先說明，有效的策略優化應從哪些維度切入——辨別哪些努力真正有槓桿效果、哪些在消耗資源卻貢獻有限，以及如何識別策略性的弱連結。`,
+    action:(role,ctx)=>`然後，請審視${ctx?'以下描述的現有策略或做法':'這位'+role+'的典型操作方式'}，找出最薄弱的 2-3 個環節、投入產出比最低的方向（建議停止），以及有槓桿效果但未充分利用的機會，給出具體的強化路徑。`
+  },
+  persuade:{
+    frame:()=>`請先說明，頂尖說服者在構建提案時與一般人的根本差異——如何識別受眾核心關切、建立可信度、設計讓人難以拒絕的邏輯鏈。`,
+    action:(role,ctx)=>`然後，請協助構建${ctx?'以下這個提案或溝通情境':'一個'+role+'常見的說服情境'}的完整架構：開場建立共鳴、核心論點排列、預先化解疑慮，以及促成具體下一步的行動呼籲，並給出可直接套用的範例語句。`
+  }
+};
+
+/* ════════════════════════════════
+   狀態
+════════════════════════════════ */
+let state = {
+  role: null,
+  modes: new Set(),
+  expert: null,
+  expertTag: null,
+  task: null,
+  formats: new Set(),
+  context: ''
+};
+
+let currentStep = 1;
+const TOTAL_STEPS = 6;
+
+/* ════════════════════════════════
+   渲染
+════════════════════════════════ */
+function renderRoles() {
+  const g = document.getElementById('role-grid');
+  ROLES.forEach(cat => {
+    const lbl = document.createElement('div');
+    lbl.className = 'cat-label'; lbl.textContent = cat.cat;
+    g.appendChild(lbl);
+    const row = document.createElement('div');
+    row.className = 'chip-group';
+    cat.items.forEach(item => {
+      const c = document.createElement('div');
+      c.className = 'chip'; c.textContent = item;
+      c.addEventListener('click', () => {
+        g.querySelectorAll('.chip').forEach(x => x.classList.remove('sel-main'));
+        c.classList.add('sel-main');
+        state.role = item;
+        updateOutput();
+      });
+      row.appendChild(c);
+    });
+    g.appendChild(row);
+  });
+}
+
+function renderModes() {
+  const g = document.getElementById('mode-grid');
+  MODES.forEach(m => {
+    const wrap = document.createElement('div');
+    wrap.className = 'mode-chip-wrap';
+
+    const chip = document.createElement('div');
+    chip.className = 'mode-chip';
+    chip.innerHTML = `<span class="mode-chip-label">${m.label}</span><span class="mode-chip-arrow">▼</span>`;
+
+    const desc = document.createElement('div');
+    desc.className = 'mode-chip-desc';
+    desc.innerHTML = `<strong>${m.en}</strong><br>${m.desc}`;
+
+    chip.addEventListener('click', () => {
+      const isSelected = state.modes.has(m.label);
+      if (isSelected) {
+        state.modes.delete(m.label);
+        chip.classList.remove('sel-mode', 'expanded');
+        desc.classList.remove('show');
+      } else {
+        state.modes.add(m.label);
+        chip.classList.add('sel-mode', 'expanded');
+        desc.classList.add('show');
+      }
+      updateOutput();
+    });
+
+    wrap.appendChild(chip);
+    wrap.appendChild(desc);
+    g.appendChild(wrap);
+  });
+}
+
+function renderExperts() {
+  const g = document.getElementById('expert-grid');
+  EXPERTS.forEach(cat => {
+    const lbl = document.createElement('div');
+    lbl.className = 'cat-label'; lbl.textContent = cat.cat;
+    g.appendChild(lbl);
+    const row = document.createElement('div');
+    row.className = 'chip-group';
+    cat.items.forEach(item => {
+      const c = document.createElement('div');
+      c.className = 'chip'; c.textContent = item.name;
+      c.addEventListener('click', () => {
+        g.querySelectorAll('.chip').forEach(x => x.classList.remove('sel-main'));
+        c.classList.add('sel-main');
+        state.expert = item.name;
+        state.expertTag = item.tag;
+        updateOutput();
+      });
+      row.appendChild(c);
+    });
+    g.appendChild(row);
+  });
+}
+
+function renderTasks() {
+  const g = document.getElementById('task-grid');
+  TASKS.forEach(t => {
+    const c = document.createElement('div');
+    c.className = 'task-card';
+    c.innerHTML = `<div class="task-name">${t.name}</div><div class="task-desc">${t.desc}</div>`;
+    c.addEventListener('click', () => {
+      g.querySelectorAll('.task-card').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected');
+      state.task = t;
+      updateOutput();
+    });
+    g.appendChild(c);
+  });
+}
+
+function renderFormats() {
+  const g = document.getElementById('fmt-grid');
+  FORMATS.forEach(f => {
+    const c = document.createElement('div');
+    c.className = 'fmt-card';
+    c.innerHTML = `<span class="fmt-icon">${f.icon}</span><div class="fmt-name">${f.name}</div>`;
+    c.addEventListener('click', () => {
+      if (state.formats.has(f.name)) { state.formats.delete(f.name); c.classList.remove('selected'); }
+      else { state.formats.add(f.name); c.classList.add('selected'); }
+      updateOutput();
+    });
+    g.appendChild(c);
+  });
+}
+
+/* ════════════════════════════════
+   Prompt 生成
+════════════════════════════════ */
+function generatePrompt() {
+  const { role, modes, expert, expertTag, task, formats, context } = state;
+  if (!expert || !task) return null;
+  const modeStr = modes.size > 0 ? `請運用以下思考框架進行全程分析：${[...modes].join('、')}。\n\n` : '';
+  const tmpl = TASK_TEMPLATES[task.action];
+  const frameStr = tmpl.frame(expert, role || '這位使用者');
+  const actionStr = tmpl.action(role || '使用者', context.trim());
+  const roleIntro = role ? `\n\n我目前的身份是「${role}」。` : '';
+  const ctxBlock = context.trim() ? `\n\n我的具體情況如下：\n${context.trim()}` : '';
+  const formatStr = formats.size > 0
+    ? `\n\n請以下列格式呈現你的回應：${[...formats].join('、')}。每個建議務必說明理由與預期效果。`
+    : `\n\n請提供具體可行的建議，每個洞察都需要有實際可執行的行動。`;
+  return `請扮演一位${expert}，${expertTag}。\n\n${modeStr}${frameStr}${roleIntro}${ctxBlock}\n\n${actionStr}${formatStr}`;
+}
+
+function updateOutput() {
+  const prompt = generatePrompt();
+  const body = document.getElementById('output-body');
+  const qi = document.getElementById('quality-indicator');
+  if (!prompt) {
+    body.innerHTML = '<span id="output-empty">請完成前面步驟，Prompt 將自動生成。</span>';
+    qi.textContent = '';
+    return;
+  }
+  body.textContent = prompt;
+  let score = 0;
+  if (state.expert) score++;
+  if (state.task) score++;
+  if (state.role) score++;
+  if (state.modes.size > 0) score++;
+  if (state.formats.size > 0) score++;
+  if (state.context.trim()) score++;
+  const labels = ['','基礎','基礎','普通','良好','優秀','專業級'];
+  qi.textContent = `完整度：${labels[score]}`;
+}
+
+/* ════════════════════════════════
+   步驟導航
+════════════════════════════════ */
+function buildStepDots() {
+  const ind = document.getElementById('step-indicator');
+  ind.innerHTML = '';
+  for (let i = 1; i <= TOTAL_STEPS; i++) {
+    const d = document.createElement('div');
+    d.className = 'step-dot';
+    ind.appendChild(d);
+  }
+}
+
+function updateNav() {
+  const btnBack = document.getElementById('btn-back');
+  const btnNext = document.getElementById('btn-next');
+  const btnReset = document.getElementById('btn-reset');
+  const copyHint = document.getElementById('copy-hint');
+
+  // progress
+  document.getElementById('progress-fill').style.width = `${(currentStep / TOTAL_STEPS) * 100}%`;
+
+  // dots
+  document.querySelectorAll('.step-dot').forEach((d, i) => {
+    d.className = 'step-dot';
+    if (i + 1 === currentStep) d.classList.add('active');
+    else if (i + 1 < currentStep) d.classList.add('done');
+  });
+
+  // back
+  btnBack.style.display = currentStep > 1 ? 'inline-flex' : 'none';
+
+  // last step
+  if (currentStep === TOTAL_STEPS) {
+    btnNext.textContent = '複製 Prompt';
+    btnNext.style.display = 'inline-flex';
+    copyHint.style.display = 'none';
+    btnReset.style.display = 'inline-flex';
+    copyHint.classList.remove('show');
+  } else {
+    btnNext.textContent = '下一步 →';
+    btnNext.style.display = 'inline-flex';
+    copyHint.style.display = 'none';
+    btnReset.style.display = 'none';
+  }
+}
+
+function goToStep(next) {
+  document.getElementById(`step-${currentStep}`).classList.remove('active');
+  document.getElementById(`step-${next}`).classList.add('active');
+  document.getElementById('steps-wrapper').scrollTop = 0;
+  currentStep = next;
+  updateNav();
+}
+
+/* ════════════════════════════════
+   事件
+════════════════════════════════ */
+document.getElementById('btn-next').addEventListener('click', () => {
+  if (currentStep < TOTAL_STEPS) {
+    goToStep(currentStep + 1);
+  } else {
+    // 複製
+    const prompt = generatePrompt();
+    if (!prompt) return;
+    navigator.clipboard.writeText(prompt).then(() => {
+      const hint = document.getElementById('copy-hint');
+      const btn = document.getElementById('btn-next');
+      hint.style.display = 'block';
+      hint.classList.add('show');
+      btn.style.display = 'none';
+      setTimeout(() => {
+        hint.classList.remove('show');
+        setTimeout(() => {
+          hint.style.display = 'none';
+          btn.style.display = 'inline-flex';
+        }, 300);
+      }, 2000);
+    });
+  }
+});
+
+document.getElementById('btn-back').addEventListener('click', () => {
+  if (currentStep > 1) goToStep(currentStep - 1);
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  state = { role: null, modes: new Set(), expert: null, expertTag: null, task: null, formats: new Set(), context: '' };
+  document.querySelectorAll('.chip.sel-main,.chip.sel-mode,.task-card.selected,.fmt-card.selected')
+    .forEach(el => el.classList.remove('sel-main','sel-mode','selected'));
+  document.querySelectorAll('.mode-chip').forEach(el => el.classList.remove('sel-mode','expanded'));
+  document.querySelectorAll('.mode-chip-desc').forEach(el => el.classList.remove('show'));
+  document.getElementById('context-input').value = '';
+  updateOutput();
+  goToStep(1);
+});
+
+document.getElementById('context-input').addEventListener('input', e => {
+  state.context = e.target.value;
+  updateOutput();
+});
+
+// 深淺色切換
+let isDark = false;
+document.getElementById('theme-btn').addEventListener('click', () => {
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '');
+  document.getElementById('theme-btn').textContent = isDark ? '☽' : '☀';
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', isDark ? '#1C1C1E' : '#1A1A2E');
+});
+
+// Service Worker 註冊
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+/* ════════════════════════════════
+   初始化
+════════════════════════════════ */
+renderRoles();
+renderModes();
+renderExperts();
+renderTasks();
+renderFormats();
+buildStepDots();
+document.getElementById('step-1').classList.add('active');
+updateNav();
+</script>
+</body>
+</html>
