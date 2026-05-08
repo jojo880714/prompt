@@ -514,6 +514,175 @@
     font-size: 12px;
     color: var(--text-tertiary);
   }
+
+  /* ════════════════════════════════
+     RWD — 手機版
+  ════════════════════════════════ */
+  @media (max-width: 600px) {
+
+    /* Header */
+    .header {
+      padding: 0.85rem 1rem;
+      gap: 8px;
+    }
+    .header-title {
+      font-size: 13px;
+    }
+    .progress-label {
+      display: none; /* 手機隱藏文字，只留點 */
+    }
+    .progress-dot { width: 6px; height: 6px; }
+    .progress-dot.key { width: 8px; height: 8px; }
+
+    /* Container */
+    .container {
+      padding: 1rem 0.85rem 5rem;
+      gap: 1rem;
+    }
+
+    /* Section */
+    .section {
+      padding: 1.1rem 1rem;
+    }
+    .section-title { font-size: 14px; }
+    .section-hint { font-size: 11px; }
+
+    /* 快速套用：橫向捲動單行 */
+    .presets-section {
+      padding: 1rem;
+    }
+    .preset-grid {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      gap: 8px;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .preset-grid::-webkit-scrollbar { display: none; }
+    .preset-grid.collapsed {
+      max-height: 0;
+      opacity: 0;
+      padding-bottom: 0;
+    }
+    .preset-card {
+      flex: 0 0 148px;
+      min-width: 148px;
+    }
+
+    /* Chip — 手指好點 */
+    .chip, .mode-chip {
+      padding: 8px 14px;
+      font-size: 13px;
+    }
+    .goal-chip {
+      padding: 7px 12px;
+      font-size: 12px;
+    }
+
+    /* Goal 分類標籤收窄 */
+    .goal-cat-label {
+      width: 42px;
+      font-size: 9px;
+    }
+
+    /* 思考模式 tooltip → 改點擊顯示，位置固定在下方 */
+    .mode-chip .tooltip {
+      display: none !important; /* 關掉 hover 版本 */
+    }
+    .mode-chip.tooltip-open .tooltip-mobile {
+      display: block;
+    }
+    .tooltip-mobile {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border-strong);
+      border-radius: 16px 16px 0 0;
+      padding: 20px 20px 32px;
+      z-index: 9999;
+      box-shadow: 0 -8px 32px rgba(0,0,0,0.15);
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+    .tooltip-mobile-name {
+      display: block;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+    .tooltip-mobile-close {
+      position: absolute;
+      top: 14px; right: 16px;
+      background: var(--bg-muted);
+      border: none;
+      border-radius: 50%;
+      width: 28px; height: 28px;
+      font-size: 14px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      display: flex; align-items: center; justify-content: center;
+    }
+    /* 遮罩 */
+    .tooltip-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      background: transparent;
+    }
+    .tooltip-backdrop.show { display: block; }
+
+    /* 任務卡片：強制 2 欄 */
+    .task-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .task-card { padding: 11px 12px; }
+    .task-name { font-size: 12px; }
+    .task-desc { font-size: 10px; }
+
+    /* 格式卡片：強制 4 欄 */
+    .format-grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+    }
+    .format-card { padding: 10px 6px; }
+    .format-icon { font-size: 16px; margin-bottom: 5px; }
+    .format-name { font-size: 10px; }
+    .format-desc { display: none; } /* 手機隱藏描述，卡片不擠 */
+
+    /* Textarea */
+    .context-textarea {
+      font-size: 16px; /* iOS 防止自動縮放 */
+      min-height: 80px;
+    }
+
+    /* 輸出區 */
+    .output-body {
+      font-size: 13px;
+      padding: 1rem;
+    }
+    .output-actions {
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0.85rem 1rem;
+    }
+    .output-actions .btn {
+      flex: 1;
+      justify-content: center;
+      padding: 11px 16px;
+      font-size: 14px;
+    }
+    .copy-hint, .char-count {
+      width: 100%;
+      text-align: center;
+      margin-left: 0;
+    }
+  }
 </style>
 </head>
 <body>
@@ -992,12 +1161,54 @@ function selectRole(roleName) {
 
 function buildModes() {
   const g = document.getElementById('mode-grid');
+
+  // 手機用底部 sheet
+  const backdrop = document.createElement('div');
+  backdrop.className = 'tooltip-backdrop';
+  backdrop.id = 'tooltip-backdrop';
+  document.body.appendChild(backdrop);
+
+  const sheet = document.createElement('div');
+  sheet.className = 'tooltip-mobile';
+  sheet.id = 'tooltip-sheet';
+  sheet.innerHTML = `
+    <button class="tooltip-mobile-close" id="tooltip-close">✕</button>
+    <span class="tooltip-mobile-name" id="tooltip-sheet-name"></span>
+    <span id="tooltip-sheet-desc"></span>
+  `;
+  document.body.appendChild(sheet);
+
+  const closeSheet = () => {
+    sheet.style.display = 'none';
+    backdrop.classList.remove('show');
+    document.querySelectorAll('.mode-chip').forEach(x => x.classList.remove('tooltip-open'));
+  };
+  backdrop.addEventListener('click', closeSheet);
+  document.getElementById('tooltip-close').addEventListener('click', closeSheet);
+
+  const isMobile = () => window.matchMedia('(max-width: 600px)').matches;
+
   MODES.forEach(m => {
     const c = document.createElement('div');
     c.className = 'mode-chip';
     c.dataset.label = m.label;
     c.innerHTML = `${m.label}<div class="tooltip"><span class="tooltip-name">${m.en}</span>${m.desc}</div>`;
     c.addEventListener('click', () => {
+      if (isMobile()) {
+        // 手機：長按或點擊右側 ⓘ → 這裡改為：單擊先判斷是否已選，未選才顯示說明
+        // 實際做法：第一次點顯示說明，說明顯示中再點才切換選取
+        const sheetVisible = sheet.style.display === 'block';
+        if (!sheetVisible || !c.classList.contains('tooltip-open')) {
+          document.querySelectorAll('.mode-chip').forEach(x => x.classList.remove('tooltip-open'));
+          c.classList.add('tooltip-open');
+          document.getElementById('tooltip-sheet-name').textContent = m.en;
+          document.getElementById('tooltip-sheet-desc').textContent = m.desc;
+          sheet.style.display = 'block';
+          backdrop.classList.add('show');
+          return; // 第一次點只顯示說明，不切換選取
+        }
+      }
+      // 桌機或第二次點：切換選取
       if (state.modes.has(m.label)) { state.modes.delete(m.label); c.classList.remove('selected'); }
       else { state.modes.add(m.label); c.classList.add('selected'); }
       update();
